@@ -42,7 +42,8 @@ template <class T>
 concept is_any = std::same_as<std::decay_t<T>, any>;
 
 template <class T>
-concept any_constructible = (!is_any<T>) &&std::copy_constructible<std::decay_t<T>>;
+concept any_constructible =
+    (!is_any<T>) && std::copy_constructible<std::decay_t<T>>;
 
 template <class T, class... Args>
 concept any_constructible_from =
