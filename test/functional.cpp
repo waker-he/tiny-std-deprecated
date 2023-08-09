@@ -1,17 +1,16 @@
 #include "functional.hpp"
 #include <iostream>
+#include <vector>
 
 using namespace mystl;
 
-void foo2() { std::cout << "foo2\n"; }
+auto foo2() -> void { std::cout << "foo2\n"; }
 
 struct Foo3 {
     void operator()() { std::cout << "foo1\n"; }
-
-    void foo5() { std::cout << "foo4\n"; }
 };
 
-auto main() -> int {
+auto test_function_ref() -> auto{
     Foo3 foo1;
     // constructed by function object
     function_ref f1(foo1);
@@ -38,3 +37,14 @@ auto main() -> int {
     f4 = std::move(f2);
     f2();
 }
+
+consteval auto test_reference_wrapper() -> int {
+    int i = 3;
+    reference_wrapper ri = i;
+    std::vector<reference_wrapper<int>> vec{ri};
+    return vec[0];
+}
+
+static_assert(test_reference_wrapper() == 3);
+
+auto main() -> int { test_function_ref(); }
