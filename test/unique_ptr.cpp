@@ -1,5 +1,5 @@
 
-#include "smart_pointers.hpp"
+#include "memory.hpp"
 #include <cassert>
 #include <iostream>
 
@@ -74,6 +74,8 @@ struct Derived : Base {
 };
 
 consteval auto test_unique_ptr1() -> bool {
+    static_assert(sizeof(unique_ptr<int, S>) == sizeof(void*));
+    static_assert(sizeof(unique_ptr<int, S&>) == 2*sizeof(void*));
     // normal ctors
     unique_ptr<int> ptr1(new int{2});
     assert(*ptr1 == 2);

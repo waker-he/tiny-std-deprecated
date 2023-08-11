@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
-#include "smart_pointers.hpp"
+#include "memory.hpp"
 
 namespace mystl {
 
