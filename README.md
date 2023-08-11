@@ -4,10 +4,12 @@
 
 # implemented
 
-- [any](#any)
-- [function_ref](#function_ref)
+- [`any`](#any)
+- [`function_ref`](#function_ref)
+- [Smart Pointers](#smart-pointers)
+    - [`unique_ptr`](#unique_ptr)
 
-# [any](./src/any.hpp)
+# [`any`](./src/any.hpp)
 - classic type erasure implementation
     - used __compiler-generated vtable__ instead of __manual vtable__
     - does not use __Small Object Optimization (SSO)__
@@ -16,7 +18,7 @@
         - `clone()`: to support `any` construction and copy assignment
         - `type()`: to support `any::type()`
 
-# [function_ref](./src/functional.hpp)
+# [`function_ref`](./src/functional.hpp)
 
 - practice a naive implementation of type erasure
     - no __compiler-generated vtable__ or __manual vtable__
@@ -31,3 +33,23 @@
     - uses deduction guide for:
         - function pointer
         - function object with no overloaded function call operators
+
+# [Smart Pointers](./src/smart_pointers.hpp)
+
+- does not contain implementation of array-version
+
+## `unique_ptr`
+
+- rules of propagating deleters from `From rhs` to `To lhs`, referred from https://en.cppreference.com/w/cpp/memory/unique_ptr/unique_ptr
+    - if `From` and `To` are references
+        - `lhs` is copy constructed/assigned from `rhs`
+            - for copy construction, we are just constructing a reference
+            - but for copy assignment, we are not assigning to the reference, we are assigning the object the reference refers to
+    - if `From` is reference but `To` is not reference
+        - `lhs` is copy constructed/assigned from `rhs`
+    - if `From` is not reference but `To` is reference
+        - __construction__: not allowed
+        - __assignment__: move assigned from `rhs` to `lhs`
+            - move assigned to the object `lhs` refers to, instead of `lhs` itself
+    - if `From` and `To` are not reference
+        - `lhs` is move constructed/assigned from `rhs`
