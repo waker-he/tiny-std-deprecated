@@ -53,3 +53,12 @@
             - move assigned to the object `lhs` refers to, instead of `lhs` itself
     - if `From` and `To` are not reference
         - `lhs` is move constructed/assigned from `rhs`
+- interesting bugs:
+    - do not declare copy ctor/assignment at all, even `= delete`:
+        - `unique_ptr(const unique&) = delete;`
+        - `unique_ptr& operator=(const unique&) = delete;`
+        - declaring them will make them participate in overload resolution, and there is chance they are chosen over __move ctor/assignment__
+    - `std::covertible_to<From*, To*>` does not guarantee `std::convertible_to<From, To>`
+        - the pointer convertibility primarily concerns inheritance and polymorphism
+        - direct type convertibility concerns constructors and conversion operators
+

@@ -3,10 +3,10 @@
 #include <array>
 #include <concepts>
 #include <initializer_list>
-#include <memory>
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
+#include "smart_pointers.hpp"
 
 namespace mystl {
 
@@ -16,7 +16,7 @@ namespace detail {
 
 struct AnyBase {
     virtual ~AnyBase() = default;
-    virtual auto clone() const -> std::unique_ptr<AnyBase> = 0;
+    virtual auto clone() const -> unique_ptr<AnyBase> = 0;
     virtual auto type() const noexcept -> const std::type_info & = 0;
 };
 
@@ -29,8 +29,8 @@ template <class T> struct AnyDerive : AnyBase {
     template <class... Args>
     explicit AnyDerive(Args &&...args) : value_(std::forward<Args>(args)...) {}
 
-    auto clone() const -> std::unique_ptr<AnyBase> override {
-        return std::make_unique<AnyDerive<T>>(value_);
+    auto clone() const -> unique_ptr<AnyBase> override {
+        return make_unique<AnyDerive<T>>(value_);
     }
 
     auto type() const noexcept -> const std::type_info & override {
@@ -65,7 +65,7 @@ class any {
     template <class T>
         requires detail::any_constructible<T>
     any(T &&value)
-        : ptr_{std::make_unique<detail::AnyDerive<std::decay_t<T>>>(
+        : ptr_{make_unique<detail::AnyDerive<std::decay_t<T>>>(
               std::forward<T>(value))} {}
 
     any(const any &other) : ptr_(other.ptr_ ? other.ptr_->clone() : nullptr) {}
@@ -105,7 +105,7 @@ class any {
     template <class T, class... Args>
         requires detail::any_constructible_from<T, Args...>
     auto emplace(Args &&...args) -> std::decay_t<T> & {
-        ptr_ = std::make_unique<detail::AnyDerive<std::decay_t<T>>>(
+        ptr_ = make_unique<detail::AnyDerive<std::decay_t<T>>>(
             std::forward<Args>(args)...);
         return static_cast<detail::AnyDerive<std::decay_t<T>> *>(ptr_.get())
             ->value_;
@@ -116,7 +116,7 @@ class any {
                                                 Args...>
     auto emplace(std::initializer_list<U> il, Args &&...args)
         -> std::decay_t<T> & {
-        ptr_ = std::make_unique<detail::AnyDerive<std::decay_t<T>>>(
+        ptr_ = make_unique<detail::AnyDerive<std::decay_t<T>>>(
             il, std::forward<Args>(args)...);
         return static_cast<detail::AnyDerive<std::decay_t<T>> *>(ptr_.get())
             ->value_;
@@ -134,7 +134,7 @@ class any {
     }
 
   private:
-    std::unique_ptr<detail::AnyBase> ptr_;
+    unique_ptr<detail::AnyBase> ptr_;
 
     template <class T>
     friend auto any_cast(const any *a) noexcept -> const T * {

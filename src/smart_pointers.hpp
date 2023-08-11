@@ -16,6 +16,9 @@ namespace detail {
 // ****************************************************************************
 
 template <class From, class To>
+concept pointer_convertible_to = std::convertible_to<From*, To*>;
+
+template <class From, class To>
 concept deleter_copy_constructible_to =
     std::is_reference_v<From> && std::is_nothrow_constructible_v<To, From>;
 
@@ -36,8 +39,7 @@ concept deleter_move_assignable_to =
 template <class T> struct default_delete {
     constexpr default_delete() noexcept = default;
 
-    template <class U>
-        requires std::convertible_to<U, T>
+    template <detail::pointer_convertible_to<T> U>
     constexpr default_delete(const default_delete<U> &) noexcept {}
 
     constexpr void operator()(T *ptr) const {
@@ -49,8 +51,7 @@ template <class T> struct default_delete {
 template <class T> struct default_delete<T[]> {
     constexpr default_delete() noexcept = default;
 
-    template <class U>
-        requires std::convertible_to<U, T>
+    template <detail::pointer_convertible_to<T> U>
     constexpr default_delete(const default_delete<U[]> &) noexcept {}
 
     constexpr void operator()(T *ptr) const {
@@ -98,14 +99,12 @@ class unique_ptr {
         : _ptr{p}, _deleter{std::move(d)} {}
 
     // copy/move constructors
-    unique_ptr(const unique_ptr &) = delete;
-
-    template <std::convertible_to<T> U,
+    template <detail::pointer_convertible_to<T> U,
               detail::deleter_copy_constructible_to<Deleter> OtherDeleter>
     constexpr unique_ptr(unique_ptr<U, OtherDeleter> &&other) noexcept
         : _ptr(other.release()), _deleter(other.get_deleter()) {}
 
-    template <std::convertible_to<T> U,
+    template <detail::pointer_convertible_to<T> U,
               detail::deleter_move_constructible_to<Deleter> OtherDeleter>
     constexpr unique_ptr(unique_ptr<U, OtherDeleter> &&other) noexcept
         : _ptr(other.release()), _deleter(std::move(other.get_deleter())) {}
@@ -114,30 +113,29 @@ class unique_ptr {
     constexpr ~unique_ptr() { _deleter(_ptr); }
 
     // assignments
-    auto operator=(const unique_ptr &) -> unique_ptr & = delete;
     constexpr auto operator=(std::nullptr_t) -> unique_ptr & {
         reset();
         return *this;
     }
 
-    template <std::convertible_to<T> U,
+    template <detail::pointer_convertible_to<T> U,
               detail::deleter_copy_assignable_to<Deleter> OtherDeleter>
     constexpr auto operator=(unique_ptr<U, OtherDeleter> &&other) noexcept
         -> unique_ptr & {
-        if (this == &other)
-            return *this;
+        if (static_cast<void*>(this) == static_cast<void*>(&other))
+            return *this;   // self-move-assignment is no-op
         reset();
         _ptr = other.release();
         _deleter = other.get_deleter();
         return *this;
     }
 
-    template <std::convertible_to<T> U,
+    template <detail::pointer_convertible_to<T> U,
               detail::deleter_move_assignable_to<Deleter> OtherDeleter>
     constexpr auto operator=(unique_ptr<U, OtherDeleter> &&other) noexcept
         -> unique_ptr & {
-        if (this == &other)
-            return *this; // self-move-assignment is a no-op
+        if (static_cast<void*>(this) == static_cast<void*>(&other))
+            return *this;   // self-move-assignment is no-op
         reset();
         _ptr = other.release();
         _deleter = std::move(other.get_deleter());
