@@ -1,12 +1,12 @@
 #pragma once
 
+#include "memory.hpp"
 #include <array>
 #include <concepts>
 #include <initializer_list>
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
-#include "memory.hpp"
 
 namespace mystd {
 

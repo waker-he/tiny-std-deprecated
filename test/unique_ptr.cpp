@@ -74,8 +74,8 @@ struct Derived : Base {
 };
 
 consteval auto test_unique_ptr1() -> bool {
-    static_assert(sizeof(unique_ptr<int, S>) == sizeof(void*));
-    static_assert(sizeof(unique_ptr<int, S&>) == 2*sizeof(void*));
+    static_assert(sizeof(unique_ptr<int, S>) == sizeof(void *));
+    static_assert(sizeof(unique_ptr<int, S &>) == 2 * sizeof(void *));
     // normal ctors
     unique_ptr<int> ptr1(new int{2});
     assert(*ptr1 == 2);
@@ -133,7 +133,7 @@ auto test_unique_ptr2() -> void {
     S s1;
     unique_ptr<int, S &> ptr4(new int{4}, s1);
     assert(ptr3 != ptr4);
-    unique_ptr<int, const S&> ptr5(new int{5}, s1);
+    unique_ptr<int, const S &> ptr5(new int{5}, s1);
     assert(*ptr5 == 5);
 }
 

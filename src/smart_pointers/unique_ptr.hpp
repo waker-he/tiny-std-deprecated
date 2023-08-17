@@ -16,7 +16,7 @@ namespace detail {
 // ****************************************************************************
 
 template <class From, class To>
-concept pointer_convertible_to = std::convertible_to<From*, To*>;
+concept pointer_convertible_to = std::convertible_to<From *, To *>;
 
 template <class From, class To>
 concept deleter_copy_constructible_to =
@@ -122,8 +122,8 @@ class unique_ptr {
               detail::deleter_copy_assignable_to<Deleter> OtherDeleter>
     constexpr auto operator=(unique_ptr<U, OtherDeleter> &&other) noexcept
         -> unique_ptr & {
-        if (static_cast<void*>(this) == static_cast<void*>(&other))
-            return *this;   // self-move-assignment is no-op
+        if (static_cast<void *>(this) == static_cast<void *>(&other))
+            return *this; // self-move-assignment is no-op
         reset();
         _ptr = other.release();
         _deleter = other.get_deleter();
@@ -134,8 +134,8 @@ class unique_ptr {
               detail::deleter_move_assignable_to<Deleter> OtherDeleter>
     constexpr auto operator=(unique_ptr<U, OtherDeleter> &&other) noexcept
         -> unique_ptr & {
-        if (static_cast<void*>(this) == static_cast<void*>(&other))
-            return *this;   // self-move-assignment is no-op
+        if (static_cast<void *>(this) == static_cast<void *>(&other))
+            return *this; // self-move-assignment is no-op
         reset();
         _ptr = other.release();
         _deleter = std::move(other.get_deleter());

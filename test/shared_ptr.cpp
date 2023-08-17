@@ -1,9 +1,9 @@
 
 #include "memory.hpp"
-#include <vector>
 #include <cassert>
-#include <thread>
 #include <iostream>
+#include <thread>
+#include <vector>
 
 using namespace mystd;
 
@@ -21,18 +21,13 @@ auto test_control_block() -> void {
 
 struct Base {
     int i;
-    Base() {
-        counts++;
-    }
+    Base() { counts++; }
     virtual ~Base() = default;
 };
 struct Derive : Base {
     double j;
-    virtual ~Derive() {
-        counts--;
-    }
+    virtual ~Derive() { counts--; }
 };
-
 
 void thread_func(const int n) {
     for (int i = 0; i < n; i++) {
@@ -105,8 +100,8 @@ auto test_shared_ptr() -> void {
         std::vector<std::thread> threads;
         for (int i = 0; i < NUM_THREADS; i++)
             threads.emplace_back(thread_func, ITERATIONS);
-        
-        for (auto& t : threads)
+
+        for (auto &t : threads)
             t.join();
     }
 
