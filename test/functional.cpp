@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 
-using namespace mystl;
+using namespace mystd;
 
 auto foo2() -> void { std::cout << "foo2\n"; }
 

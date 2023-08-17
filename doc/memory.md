@@ -1,11 +1,12 @@
 # memory
 
 - [`unique_ptr`](#unique_ptr)
+- [`shared_ptr`](#shared_ptr)
 
 ## `unique_ptr`
 
 - [code](../src/smart_pointers/unique_ptr.hpp)
-- do not have implementation of array-version
+- `mystd::unique_ptr` does not have array-version
 - rules of propagating deleters from `From rhs` to `To lhs`, referred from https://en.cppreference.com/w/cpp/memory/unique_ptr/unique_ptr
     - if `From` and `To` are references
         - `lhs` is copy constructed/assigned from `rhs`
@@ -20,10 +21,56 @@
     - if `From` and `To` are not reference
         - `lhs` is move constructed/assigned from `rhs`
 - interesting bugs:
-    - do not declare copy ctor/assignment at all, even `= delete`:
+    - don't declare copy ctor/assignment at all, even `= delete`:
         - `unique_ptr(const unique&) = delete;`
         - `unique_ptr& operator=(const unique&) = delete;`
         - declaring them will make them participate in overload resolution, and there is chance they are chosen over __move ctor/assignment__
     - `std::covertible_to<From*, To*>` is independent from `std::convertible_to<From, To>`
         - the pointer convertibility primarily concerns inheritance and polymorphism
         - direct type convertibility concerns constructors and conversion operators
+
+## `shared_ptr`
+
+- [code](../src/smart_pointers/shared_ptr.hpp)
+- `mystd::shared_ptr` does not have array-version
+- in `std::shared_ptr` with customized __allocator__ and __deleter__:
+    - __allocator__ is used to allocate and deallocate __control block__
+    - __deleter__ is used to destroy and deallocate __managed object__
+    - when `std::shared_ptr` is created using `std::make_shared` or `std::allocate_shared`
+        - managed object is allocated in the control block
+        - cannot specify custom __deleter__
+    - no conflicts between __allocator__ and __deleter__ can occur
+- `mystd::shared_ptr` do not have option for specifying __custom allocator__, __reasons__:
+    - inherently conflicting model of `shared_ptr` with __custom allocator__
+        - to deallocate control block, need to
+            1. call the destructor of control block
+            2. get the allocator that allocates the control block
+        - the allocator is stored inside the control block, but it is destroyed in the first step
+        - things get messy with allocator that is __stateful__ or __has side effects when beginning and ending its lifetime__
+        - check [example](https://godbolt.org/z/63c3xb7c7): a single instance of `std::shared_ptr<int>` calls destructor of its __allocator__ for 6 times!
+    - I don't like C++ STL allocator model
+        - `std::allocator` sucks with this __rebinding__ stuff and its __type parameter__ does not make any sense
+        - `std::pmr::polymorphic_allocator` is easier to use but requires 8 bytes of storage even using `new` and `delete`
+        - [my allocator learning note](https://github.com/waker-umich/cs-learning-notes/blob/main/cpp/cppcon/allocator/allocator.md)
+- about atomic operations on reference counts:
+    - refer to
+        - [my memory model note](https://github.com/waker-umich/cs-learning-notes/blob/main/cpp/concurrency/memory-model/memory-model.md)
+        - [a well-explained answer on relaxed atomic usage for `shared_ptr` on stack overflow](https://stackoverflow.com/questions/48124031/stdmemory-order-relaxed-atomicity-with-respect-to-the-same-atomic-variable/48148318#48148318)
+    - used `std::memory_order_relaxed` for incrementing
+        - once control block is constructed, the increment order does not matter
+        - invoking of copy constructors always have a `happens-before` relationship
+    - for decrementing:
+        ```cpp
+        if (shared_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            delete ptr;
+        }
+        ```
+        - technically, only the thread which modifies the shared object need to do a __release store__, and only the last thread that decrement the `shared_count` need an __acquire load__
+        - but thread actions differ in each run, so we used `std::memory_order_acq_rel` for all decrements
+        - we can optimize it to be:
+            ```cpp
+            if (shared_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                std::atomic_thread_fence(std::memory_order_acquire);
+                delete ptr;
+            }
+            ```

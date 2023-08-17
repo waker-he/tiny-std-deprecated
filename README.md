@@ -1,4 +1,4 @@
-# tiny-stl
+# tiny-std
 - My C++ standard library implementation for practice purpose
 - not intensively tested, not guaranteed to be robust
 
@@ -9,4 +9,5 @@
     - [`function_ref` (C++26)](./doc/functional.md#function_ref)
 - [memory](./doc/memory.md)
     - [`unique_ptr` (C++11)](./doc/memory.md#unique_ptr)
+    - [`shared_ptr` (C++11)](./doc/memory.md#shared_ptr)
 

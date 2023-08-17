@@ -2,7 +2,7 @@
 #include <cassert>
 #include <vector>
 
-using namespace mystl;
+using namespace mystd;
 
 auto main() -> int {
     // ctor

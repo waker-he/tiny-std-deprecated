@@ -3,7 +3,7 @@
 #include <cassert>
 #include <iostream>
 
-using namespace mystl;
+using namespace mystd;
 
 struct S {
     S() { std::cout << "ctor\n"; }

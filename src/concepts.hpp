@@ -1,6 +1,6 @@
 #pragma once
 
-namespace mystl {
+namespace mystd {
 
 template <class T>
 concept complete = requires { sizeof(T); };

@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace mystl {
+namespace mystd {
 
 namespace detail {
 
@@ -204,4 +204,4 @@ constexpr auto make_unique(Args &&...args) -> unique_ptr<T> {
     return unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-} // namespace mystl
+} // namespace mystd

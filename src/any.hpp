@@ -8,7 +8,7 @@
 #include <utility>
 #include "memory.hpp"
 
-namespace mystl {
+namespace mystd {
 
 class any;
 
@@ -187,4 +187,4 @@ class any {
 
 auto swap(any &lhs, any &rhs) noexcept -> void { lhs.swap(rhs); }
 
-} // namespace mystl
+} // namespace mystd

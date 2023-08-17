@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace mystl {
+namespace mystd {
 
 namespace detail {
 
@@ -108,4 +108,4 @@ class reference_wrapper {
 
 template <class T> reference_wrapper(T &) -> reference_wrapper<T>;
 
-} // namespace mystl
+} // namespace mystd
