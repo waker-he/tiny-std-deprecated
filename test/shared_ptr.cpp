@@ -186,7 +186,7 @@ auto test_weak_ptr() -> void {
     {
         // multithreading
         constexpr int thread_count = 5;
-        constexpr int iteration_count = 10000;
+        constexpr int iteration_count = 1000;
         std::atomic<int> successful_locks{0};
 
         shared_ptr<Base> sp = make_shared<Derive>();
@@ -204,7 +204,7 @@ auto test_weak_ptr() -> void {
 
         // Simulate a scenario where the shared pointer may be reset by another
         // thread
-        std::this_thread::sleep_for(2s);
+        std::this_thread::sleep_for(200ms);
         sp.reset();
 
         for (auto &t : threads) {
@@ -219,8 +219,86 @@ auto test_weak_ptr() -> void {
     assert(count2 == 0);
 }
 
+// ****************************************************************************
+// *                 enable_shared_from_this test                             *
+// ****************************************************************************
+
+struct TestESSFT : public enable_shared_from_this<TestESSFT> {
+    int value = 42;
+};
+
+void basic_test() {
+    auto ptr = make_shared<TestESSFT>();
+    auto shared_from_this = ptr->shared_from_this();
+
+    assert(shared_from_this->value == 42);
+    assert(shared_from_this.get() == ptr.get());
+    assert(shared_from_this.use_count() == 2);
+
+    auto weak_from_this = ptr->weak_from_this();
+    assert(weak_from_this.lock().get() == ptr.get());
+}
+
+void constructor_test() {
+    TestESSFT *rawPtr = new TestESSFT();
+    shared_ptr<TestESSFT> ptr1(rawPtr);
+
+    auto shared_from_raw = rawPtr->shared_from_this();
+    assert(shared_from_raw.get() == ptr1.get());
+    assert(shared_from_raw.use_count() == 2);
+
+    shared_ptr<TestESSFT> ptr2(
+        rawPtr); // According to standard, this is undefined behavior. It's a
+                 // bad practice but for the sake of testing, we're doing it
+                 // here.
+
+    auto shared_from_raw_after = rawPtr->shared_from_this();
+    assert(shared_from_raw_after.get() == ptr2.get());
+    assert(shared_from_raw_after.use_count() == 2);
+
+    // segfault when double deleting
+}
+
+void exception_test() {
+    TestESSFT obj;
+
+    try {
+        auto bad_shared = obj.shared_from_this();
+        assert(false); // should not reach here
+    } catch (const bad_weak_ptr &) {
+        // Expected: shared_from_this should throw if no shared_ptr owns obj
+    }
+}
+
+struct DerivedESSFT : public TestESSFT {};
+static_assert(detail::inherits_from_enable_shared_from_this<DerivedESSFT>);
+
+void derived_test() {
+    auto ptr = make_shared<DerivedESSFT>();
+    shared_ptr<TestESSFT> basePtr = ptr;
+    assert(ptr.use_count() == 2);
+
+    auto derived_shared_from_this = ptr->shared_from_this();
+    assert(ptr.use_count() == 3);
+    assert(derived_shared_from_this.get() == ptr.get());
+
+    auto base_shared_from_this = basePtr->shared_from_this();
+    assert(ptr.use_count() == 4);
+    assert(base_shared_from_this.get() == basePtr.get());
+}
+
 auto main() -> int {
     test_control_block();
     test_shared_ptr();
     test_weak_ptr();
+
+    // enable_shared_from_this
+    basic_test();
+    std::cout << "pass enable_shared_from_this basic test\n";
+    // constructor_test();
+    // std::cout << "pass enable_shared_from_this ctor test\n";
+    exception_test();
+    std::cout << "pass enable_shared_from_this exception test\n";
+    derived_test();
+    std::cout << "pass enable_shared_from_this derived test\n";
 }

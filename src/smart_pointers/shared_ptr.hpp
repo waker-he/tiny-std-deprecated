@@ -3,18 +3,31 @@
 #include "unique_ptr.hpp"
 #include <array>
 #include <atomic>
+#include <exception>
 
 // count2 is only for testing purpose
 inline std::atomic<int> count2{0};
 
 namespace mystd {
 
+class bad_weak_ptr : public std::exception {
+    virtual const char *what() const noexcept { return "bad weak_ptr"; }
+};
+
 // forward declaration
 template <class T> class shared_ptr;
 
 template <class T> class weak_ptr;
 
+template <class T> class enable_shared_from_this;
+
 namespace detail {
+
+template <class T>
+concept inherits_from_enable_shared_from_this =
+    requires(T t) {
+        t.shared_from_this();
+    };
 
 // ****************************************************************************
 // *                              control_block                               *
@@ -102,11 +115,21 @@ template <class T> class shared_ptr {
     // regular constructors
     template <detail::pointer_convertible_to<T> U>
     explicit shared_ptr(U *ptr)
-        : _ptr{ptr}, _cb_ptr{new detail::control_block_with_ptr<U>(ptr)} {}
+        : _ptr{ptr}, _cb_ptr{new detail::control_block_with_ptr<U>(ptr)} {
+        if constexpr (detail::inherits_from_enable_shared_from_this<T>) {
+            // derive from enable_shared_from_this
+            _ptr->_weak_this = *this;
+        }
+    }
 
     template <detail::pointer_convertible_to<T> U, std::invocable<U *> Deleter>
     shared_ptr(U *ptr, Deleter d)
-        : _ptr{ptr}, _cb_ptr{new detail::control_block_with_ptr<U>(ptr, d)} {}
+        : _ptr{ptr}, _cb_ptr{new detail::control_block_with_ptr<U>(ptr, d)} {
+        if constexpr (detail::inherits_from_enable_shared_from_this<T>) {
+            // derive from enable_shared_from_this
+            _ptr->_weak_this = *this;
+        }
+    }
 
     // copy/move constructors
     shared_ptr(const shared_ptr &other) noexcept
@@ -133,6 +156,13 @@ template <class T> class shared_ptr {
                                                         nullptr)} {}
 
     // constructed from other smart pointers
+    template <detail::pointer_convertible_to<T> U>
+    shared_ptr(const weak_ptr<U> &r) : _ptr{nullptr}, _cb_ptr{nullptr} {
+        shared_ptr(r.lock()).swap(*this);
+        if (_cb_ptr == nullptr)
+            throw bad_weak_ptr{};
+    }
+
     template <detail::pointer_convertible_to<T> U, class Deleter>
     shared_ptr(unique_ptr<U, Deleter> &&r) {
         if (r) {
@@ -144,6 +174,11 @@ template <class T> class shared_ptr {
                     r.get(), std::move(r.get_deleter()));
             }
             _ptr = r.release();
+
+            if constexpr (detail::inherits_from_enable_shared_from_this<T>) {
+                // derive from enable_shared_from_this
+                _ptr->_weak_this = *this;
+            }
         } else {
             _ptr = nullptr;
             _cb_ptr = nullptr;
@@ -301,6 +336,11 @@ auto make_shared(Args &&...args) -> shared_ptr<U> {
     auto cb_ptr = ::new detail::control_block_with_obj<U>{};
     sp._ptr = cb_ptr->emplace(std::forward<Args>(args)...);
     sp._cb_ptr = cb_ptr;
+
+    if constexpr (detail::inherits_from_enable_shared_from_this<U>) {
+        // derive from enable_shared_from_this
+        sp._ptr->_weak_this = sp;
+    }
     return sp;
 }
 
@@ -425,5 +465,52 @@ template <class T> class weak_ptr {
 
 // deduction guide for weak_ptr
 template <class T> weak_ptr(shared_ptr<T>) -> weak_ptr<T>;
+
+// ****************************************************************************
+// *                      enable_shared_from_this                             *
+// ****************************************************************************
+
+template <class T> class enable_shared_from_this {
+  protected:
+    // constructors
+    constexpr enable_shared_from_this() noexcept = default;
+
+    // no move ctor, and ctor simply value-init weak_this
+    enable_shared_from_this(const enable_shared_from_this &) noexcept {}
+
+    // destructor
+    ~enable_shared_from_this() = default;
+
+    // assignment is noop
+    auto operator=(const enable_shared_from_this &) noexcept
+        -> enable_shared_from_this & {
+        return *this;
+    }
+
+  public:
+    auto shared_from_this() -> shared_ptr<T> {
+        return shared_ptr<T>(_weak_this);
+    }
+
+    auto shared_from_this() const -> shared_ptr<T const> {
+        return shared_ptr<T const>(_weak_this);
+    }
+
+    auto weak_from_this() noexcept -> weak_ptr<T> {
+        return weak_ptr<T>(_weak_this);
+    }
+
+    auto weak_from_this() const noexcept -> weak_ptr<T const> {
+        return weak_ptr<T const>(_weak_this);
+    }
+
+  private:
+    weak_ptr<T> _weak_this{};
+
+    friend class shared_ptr<T>;
+
+    template <class U, class... Args>
+    friend auto make_shared(Args &&...args) -> shared_ptr<U>;
+};
 
 } // namespace mystd

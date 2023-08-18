@@ -3,6 +3,7 @@
 - [`unique_ptr`](#unique_ptr)
 - [`shared_ptr`](#shared_ptr)
 - [`weak_ptr`](#weak_ptr)
+- [`enable_shared_from_this`](#enable_shared_from_this)
 
 ## `unique_ptr`
 
@@ -34,8 +35,6 @@
 
 - [code](../src/smart_pointers/shared_ptr.hpp)
 - `mystd::shared_ptr` does not have array-version
-- `mystd::shared_ptr` does not have constructor that takes `weak_ptr`
-    - prefer `weak_ptr::lock()` for constructing `shared_ptr` from `weak_ptr`
 - in `std::shared_ptr` with customized __allocator__ and __deleter__:
     - __allocator__ is used to allocate and deallocate __control block__
     - __deleter__ is used to destroy and deallocate __managed object__
@@ -82,6 +81,7 @@
 ## `weak_ptr`
 
 - [code](../src/smart_pointers/shared_ptr.hpp)
+- `weak_ptr` is an augmentation to `shared_ptr` and it is a ticket to `shared_ptr`
 - to synchronize between `shared_ptr` and `weak_ptr` to ensure destorying control block only once
     - `weak_count` is defined as `#weak_ptr + (#shared_ptr != 0)`
 - use lock-free add-if-not-zero operation for `lock()` implementation:
@@ -106,3 +106,9 @@
         return sp;
     }
     ```
+
+## `enable_shared_from_this`
+
+- implemented using `weak_ptr` data member, which is a _ticket_ to `shared_ptr`
+- inheriting (`public`ly) will enable an object to take part in its own life time management
+- constructing a `shared_ptr` for an object that is already managed by another `shared_ptr` is undefined behavior
