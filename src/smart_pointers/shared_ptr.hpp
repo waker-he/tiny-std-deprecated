@@ -25,9 +25,7 @@ namespace detail {
 
 template <class T>
 concept inherits_from_enable_shared_from_this =
-    requires(T t) {
-        t.shared_from_this();
-    };
+    requires(T t) { t.shared_from_this(); };
 
 // ****************************************************************************
 // *                              control_block                               *
