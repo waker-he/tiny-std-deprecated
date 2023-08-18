@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fixed_capacity_vector.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <memory>
