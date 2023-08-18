@@ -109,6 +109,7 @@
 
 ## `enable_shared_from_this`
 
+- [code](../src/smart_pointers/shared_ptr.hpp)
 - implemented using `weak_ptr` data member, which is a _ticket_ to `shared_ptr`
 - inheriting (`public`ly) will enable an object to take part in its own life time management
 - constructing a `shared_ptr` for an object that is already managed by another `shared_ptr` is undefined behavior
