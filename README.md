@@ -10,4 +10,5 @@
 - [memory](./doc/memory.md)
     - [`unique_ptr` (C++11)](./doc/memory.md#unique_ptr)
     - [`shared_ptr` (C++11)](./doc/memory.md#shared_ptr)
+    - [`weak_ptr` (C++11)](./doc/memory.md#weak_ptr)
 

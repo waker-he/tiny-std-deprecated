@@ -2,6 +2,7 @@
 
 - [`unique_ptr`](#unique_ptr)
 - [`shared_ptr`](#shared_ptr)
+- [`weak_ptr`](#weak_ptr)
 
 ## `unique_ptr`
 
@@ -33,6 +34,8 @@
 
 - [code](../src/smart_pointers/shared_ptr.hpp)
 - `mystd::shared_ptr` does not have array-version
+- `mystd::shared_ptr` does not have constructor that takes `weak_ptr`
+    - prefer `weak_ptr::lock()` for constructing `shared_ptr` from `weak_ptr`
 - in `std::shared_ptr` with customized __allocator__ and __deleter__:
     - __allocator__ is used to allocate and deallocate __control block__
     - __deleter__ is used to destroy and deallocate __managed object__
@@ -69,8 +72,37 @@
         - but thread actions differ in each run, so we used `std::memory_order_acq_rel` for all decrements
         - we can optimize it to be:
             ```cpp
-            if (shared_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            if (shared_count.fetch_sub(1, std::memory_order_release) == 1) {
                 std::atomic_thread_fence(std::memory_order_acquire);
                 delete ptr;
             }
             ```
+- fixed bug: if only define templated copy/move constructors and assignments, when copying from the same type, compiler-generated copy ctor/assignment will be called, which will not increment `shared_count`
+
+## `weak_ptr`
+
+- [code](../src/smart_pointers/shared_ptr.hpp)
+- to synchronize between `shared_ptr` and `weak_ptr` to ensure destorying control block only once
+    - `weak_count` is defined as `#weak_ptr + (#shared_ptr != 0)`
+- use lock-free add-if-not-zero operation for `lock()` implementation:
+    ```cpp
+    auto lock() const noexcept -> shared_ptr<T> {
+        shared_ptr<T> sp{};
+        if (_cb_ptr) {
+            // perform lock-free add-if-not-zero operation
+            auto count = _cb_ptr->shared_count.load(std::memory_order_relaxed);
+            do {
+                if (count == 0)
+                    return sp;
+            } while (_cb_ptr->shared_count.compare_exchange_weak(
+                count, count + 1, std::memory_order_relaxed));
+            // use std::memory_order_relaxed here because there is nothing to
+            // acquire or release
+
+            sp._ptr = _ptr;
+            sp._cb_ptr = _cb_ptr;
+        }
+
+        return sp;
+    }
+    ```

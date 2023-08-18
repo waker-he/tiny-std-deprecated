@@ -4,6 +4,9 @@
 #include <array>
 #include <atomic>
 
+// count2 is only for testing purpose
+inline std::atomic<int> count2{0};
+
 namespace mystd {
 
 // forward declaration
@@ -20,9 +23,10 @@ namespace detail {
 struct control_block_base {
     std::atomic<std::size_t> shared_count = 1; // #shared
     std::atomic<std::size_t> weak_count = 1;   // #weak + (#shared != 0)
-    virtual ~control_block_base() = default;
     virtual auto delete_obj() -> void = 0;
 
+    control_block_base() { count2++; }
+    virtual ~control_block_base() { count2--; }
     void decrement_shared() {
         if (shared_count.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
@@ -30,6 +34,12 @@ struct control_block_base {
             if (weak_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
                 ::delete this;
             }
+        }
+    }
+
+    void decrement_weak() {
+        if (weak_count.fetch_sub(1, std::memory_order_acquire) == 1) {
+            ::delete this;
         }
     }
 };
@@ -123,9 +133,6 @@ template <class T> class shared_ptr {
                                                         nullptr)} {}
 
     // constructed from other smart pointers
-    template <detail::pointer_convertible_to<T> U>
-    explicit shared_ptr(const weak_ptr<U> &r);
-
     template <detail::pointer_convertible_to<T> U, class Deleter>
     shared_ptr(unique_ptr<U, Deleter> &&r) {
         if (r) {
@@ -277,6 +284,7 @@ template <class T> class shared_ptr {
     detail::control_block_base *_cb_ptr;
 
     template <class U> friend class shared_ptr;
+    template <class U> friend class weak_ptr;
 
     template <class U, class... Args>
     friend auto make_shared(Args &&...args) -> shared_ptr<U>;
@@ -295,5 +303,127 @@ auto make_shared(Args &&...args) -> shared_ptr<U> {
     sp._cb_ptr = cb_ptr;
     return sp;
 }
+
+// ****************************************************************************
+// *                              weak_ptr                                    *
+// ****************************************************************************
+template <class T> class weak_ptr {
+  public:
+    using element_type = T;
+
+    // constructors
+    constexpr weak_ptr() noexcept : _ptr{nullptr}, _cb_ptr{nullptr} {}
+
+    // copy constructors
+    weak_ptr(const weak_ptr &other) noexcept
+        : _ptr{other._ptr}, _cb_ptr{other._cb_ptr} {
+        if (_cb_ptr)
+            _cb_ptr->weak_count.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    template <detail::pointer_convertible_to<T> U>
+    weak_ptr(const weak_ptr<U> &other) noexcept
+        : _ptr{other._ptr}, _cb_ptr{other._cb_ptr} {
+        if (_cb_ptr)
+            _cb_ptr->weak_count.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    template <detail::pointer_convertible_to<T> U>
+    weak_ptr(const shared_ptr<U> &other) noexcept
+        : _ptr{other._ptr}, _cb_ptr{other._cb_ptr} {
+        if (_cb_ptr)
+            _cb_ptr->weak_count.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    // move constructors
+    weak_ptr(weak_ptr &&other) noexcept
+        : _ptr{std::exchange(other._ptr, nullptr)}, _cb_ptr{std::exchange(
+                                                        other._cb_ptr,
+                                                        nullptr)} {}
+
+    template <detail::pointer_convertible_to<T> U>
+    weak_ptr(weak_ptr<U> &&other) noexcept
+        : _ptr{std::exchange(other._ptr, nullptr)}, _cb_ptr{std::exchange(
+                                                        other._cb_ptr,
+                                                        nullptr)} {}
+
+    // destructor
+    ~weak_ptr() {
+        if (_cb_ptr)
+            _cb_ptr->decrement_weak();
+    }
+
+    // assignments
+    auto operator=(weak_ptr rhs) noexcept -> weak_ptr & {
+        swap(rhs);
+        return *this;
+    }
+
+    template <class U> auto operator=(weak_ptr<U> rhs) noexcept -> weak_ptr & {
+        weak_ptr(std::move(rhs)).swap(*this);
+        return *this;
+    }
+
+    template <detail::pointer_convertible_to<T> U>
+    auto operator=(const shared_ptr<U> &rhs) noexcept -> weak_ptr & {
+        reset();
+        _ptr = rhs._ptr;
+        _cb_ptr = rhs._cb_ptr;
+        if (_cb_ptr)
+            _cb_ptr->weak_count.fetch_add(1, std::memory_order_relaxed);
+        return *this;
+    }
+
+    // modifiers
+    auto reset() noexcept -> void {
+        if (_cb_ptr) {
+            _cb_ptr->decrement_weak();
+            _cb_ptr = nullptr;
+            _ptr = nullptr;
+        }
+    }
+
+    auto swap(weak_ptr &other) noexcept -> void {
+        std::swap(_ptr, other._ptr);
+        std::swap(_cb_ptr, other._cb_ptr);
+    }
+
+    // observers
+    auto use_count() const noexcept -> long {
+        return _cb_ptr ? _cb_ptr->shared_count.load(std::memory_order_relaxed)
+                       : 0;
+    }
+
+    auto expired() const noexcept -> bool { return use_count() == 0; }
+
+    auto lock() const noexcept -> shared_ptr<T> {
+        shared_ptr<T> sp{};
+        if (_cb_ptr) {
+            // perform lock-free add-if-not-zero operation
+            auto count = _cb_ptr->shared_count.load(std::memory_order_relaxed);
+            do {
+                if (count == 0)
+                    return sp;
+            } while (_cb_ptr->shared_count.compare_exchange_weak(
+                count, count + 1, std::memory_order_relaxed));
+            // use std::memory_order_relaxed here because there is nothing to
+            // acquire or release
+
+            sp._ptr = _ptr;
+            sp._cb_ptr = _cb_ptr;
+        }
+
+        return sp;
+    }
+
+  private:
+    element_type *_ptr;
+    detail::control_block_base *_cb_ptr;
+
+    template <class U> friend class weak_ptr;
+};
+
+// deduction guide for weak_ptr
+template <class T> weak_ptr(shared_ptr<T>) -> weak_ptr<T>;
 
 } // namespace mystd
