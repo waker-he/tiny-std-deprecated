@@ -14,5 +14,6 @@
     - [`enable_shared_from_this` (C++11)](./doc/memory.md#enable_shared_from_this)
 - [vector](./doc/vector.md)
     - [`vector`](./doc/vector.md#vector-1)
-    - [`fixed_capacity_vector (not in standard)`](./doc/vector.md#fixed_capacity_vector)
+    - [`fixed_capacity_vector` (not in standard)](./doc/vector.md#fixed_capacity_vector)
+    - [`small_size_optimized_vector` (not in standard)](./doc/vector.md#small_size_optimized_vectort-n)
 

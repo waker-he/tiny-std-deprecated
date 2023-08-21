@@ -103,6 +103,48 @@ auto test_fixed_capacity_vector2() -> void {
     vec.emplace_back(std::move(s1));
 }
 
+consteval auto test_small_vector1() -> bool {
+    small_size_optimized_vector<int, 1> vec;
+    assert(vec.capacity() == 1);
+    assert(vec.empty());
+
+    vec.emplace_back(2);
+    assert(vec.capacity() == 1);
+    assert(vec.size() == 1);
+
+    int j = 3;
+    vec.emplace_back(j);
+    assert(vec[0] == 2 && vec[1] == 3);
+    vec.clear();
+    assert(vec.empty());
+    assert(vec.capacity() == 2);
+
+    vec.emplace_back(15);
+    auto vec2 = vec;
+    auto vec3 = std::move(vec);
+    assert(vec.empty());
+    assert(vec2[0] == vec3[0]);
+    assert(vec2[0] == 15);
+
+    vec3[0] = 23;
+    vec2 = vec3;
+    assert(vec2.size() == vec3.size());
+    assert(vec2[0] == 23);
+    return true;
+}
+
+auto test_small_vector2() -> void {
+    small_size_optimized_vector<S, 1> vec;
+    vec.emplace_back();
+    vec.emplace_back(S{});
+    vec.pop_back();
+    vec.reserve(100);
+
+    S s1;
+    vec.emplace_back(s1);
+    vec.emplace_back(std::move(s1));
+}
+
 auto main() -> int {
     std::cout << "test vector:\n";
     static_assert(test_vector1());
@@ -110,4 +152,57 @@ auto main() -> int {
     std::cout << "test fixed_capacity_vector:\n";
     static_assert(test_fixed_capacity_vector1());
     test_fixed_capacity_vector2();
+    std::cout << "test small_size_optimized_vector:\n";
+    static_assert(test_small_vector1());
+    test_small_vector2();
 }
+
+/*
+test vector:
+ctor
+ctor
+move ctor
+dtor
+move ctor
+dtor
+dtor
+move ctor
+dtor
+ctor
+copy ctor
+move ctor
+dtor
+dtor
+dtor
+dtor
+test fixed_capacity_vector:
+ctor
+ctor
+move ctor
+dtor
+dtor
+ctor
+copy ctor
+move ctor
+dtor
+dtor
+dtor
+dtor
+test small_size_optimized_vector:
+ctor
+ctor
+move ctor
+dtor
+move ctor
+dtor
+dtor
+move ctor
+dtor
+ctor
+copy ctor
+move ctor
+dtor
+dtor
+dtor
+dtor
+*/

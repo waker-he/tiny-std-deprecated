@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fixed_capacity_vector.hpp"
+#include "small_size_optimized_vector.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <memory>
@@ -39,8 +40,7 @@ template <class T> class vector {
     // destructor
     constexpr ~vector() {
         destroy_all();
-        if (_cap)
-            _alloc.deallocate(_data, _cap);
+        do_deallocate();
     }
 
     // element access
@@ -97,20 +97,24 @@ template <class T> class vector {
             std::construct_at(new_data + i,
                               std::move_if_noexcept(*(_data + i)));
         destroy_all();
+        do_deallocate();
 
-        if (_cap > 0)
-            _alloc.deallocate(_data, _cap);
         _data = new_data;
         _cap = n;
     }
 
     constexpr auto destroy_all() const noexcept -> void {
-        if constexpr (!std::is_trivially_copyable_v<T>) {
+        if constexpr (!std::is_trivially_destructible_v<T>) {
             for (auto first = _data, last = _data + _sz; first != last;
                  first++) {
                 std::destroy_at(first);
             }
         }
+    }
+
+    constexpr auto do_deallocate() -> void {
+        if (_cap > 0)
+            _alloc.deallocate(_data, _cap);
     }
 };
 
