@@ -72,6 +72,6 @@
             - cost
                 - `sizeof(void *)` extra bytes for storage
                 - `virtual` member function calls cannot be resolved at compile-time
-            - prefer `span` when need to pass `vector`s by reference, `span` can be created as a view into all contiguous ranges
+            - prefer `span` when need to pass `vector`s by reference, [`span`](./span.md) can be created as a view into all contiguous ranges
     - for copy assignment, if `this->capacity() >= rhs.size()`, this implementation does not do extra allocation and deallocation 
         - this is not a safe optimization as mentioned in [`vector`](#vector), if the `element_type` contains data member of type `small_size_optimized_vector<element_type>`, it will lead to __undefined behavior__
