@@ -44,6 +44,8 @@ template <class T> class vector {
     }
 
     // element access
+    constexpr auto data() const noexcept -> T * { return _data; }
+
     constexpr auto operator[](size_type i) noexcept -> reference {
         return *(_data + i);
     }

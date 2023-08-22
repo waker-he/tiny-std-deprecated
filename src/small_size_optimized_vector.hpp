@@ -9,23 +9,24 @@
 
 namespace mystd {
 
-template <class T, std::size_t N>
-class small_size_optimized_vector {
+template <class T, std::size_t N> class small_size_optimized_vector {
   public:
     // member types
     using value_type = T;
     using size_type = std::size_t;
     using reference = value_type &;
     using const_reference = const value_type &;
-    using iterator = T*;
-    using const_iterator = const T*;
+    using iterator = T *;
+    using const_iterator = const T *;
 
     // constructors
-    constexpr small_size_optimized_vector() noexcept : _data(storage_begin()), _sz(0), _cap(N) {}
+    constexpr small_size_optimized_vector() noexcept
+        : _data(storage_begin()), _sz(0), _cap(N) {}
 
     // copy ctor
     // will not copy capacity, the capacity will be max(other.size, N)
-    constexpr small_size_optimized_vector(const small_size_optimized_vector &other)
+    constexpr small_size_optimized_vector(
+        const small_size_optimized_vector &other)
         : _data(other._sz > N ? _alloc.allocate(other._sz) : storage_begin()),
           _sz(other._sz), _cap(std::max(N, other._sz)) {
         // copy elements
@@ -33,15 +34,15 @@ class small_size_optimized_vector {
             std::construct_at(_data + i, *(other._data + i));
     }
 
-    constexpr small_size_optimized_vector(small_size_optimized_vector &&other) noexcept {
+    constexpr small_size_optimized_vector(
+        small_size_optimized_vector &&other) noexcept {
         if (other._cap == N) {
             // move elements if in buffer
             _data = storage_begin();
             for (size_type i = 0; i < other._sz; i++)
                 std::construct_at(_data + i, std::move(*(other._data + i)));
             other.destroy_all();
-        }
-        else {
+        } else {
             // just move pointer to heap memory
             _data = std::exchange(other._data, other.storage_begin());
             _cap = std::exchange(other._cap, N);
@@ -49,9 +50,12 @@ class small_size_optimized_vector {
         _sz = std::exchange(other._sz, 0);
     }
 
-    // assignment, requires { T does not contain data member type small_size_optimized_vector<T> }
-    constexpr auto operator=(const small_size_optimized_vector& other) -> small_size_optimized_vector & {
-        if (this == &other) return *this;
+    // assignment, requires { T does not contain data member type
+    // small_size_optimized_vector<T> }
+    constexpr auto operator=(const small_size_optimized_vector &other)
+        -> small_size_optimized_vector & {
+        if (this == &other)
+            return *this;
         destroy_all();
         if (_cap < other._sz) {
             // need heap allocation
@@ -67,8 +71,10 @@ class small_size_optimized_vector {
         return *this;
     }
 
-    constexpr auto operator=(small_size_optimized_vector&& other) noexcept -> small_size_optimized_vector & {
-        if (this == &other) return *this;
+    constexpr auto operator=(small_size_optimized_vector &&other) noexcept
+        -> small_size_optimized_vector & {
+        if (this == &other)
+            return *this;
         destroy_all();
         if (other._cap == N) {
             // move elements if in buffer
@@ -76,8 +82,7 @@ class small_size_optimized_vector {
             for (size_type i = 0; i < other._sz; i++)
                 std::construct_at(_data + i, std::move(*(other._data + i)));
             other.destroy_all();
-        }
-        else {
+        } else {
             // just move pointer to heap memory
             do_deallocate();
             _data = std::exchange(other._data, other.storage_begin());
@@ -94,6 +99,8 @@ class small_size_optimized_vector {
     }
 
     // element access
+    constexpr auto data() const noexcept -> T * { return _data; }
+
     constexpr auto operator[](size_type i) noexcept -> reference {
         return *(_data + i);
     }
@@ -132,7 +139,8 @@ class small_size_optimized_vector {
     }
 
   private:
-    using storage_type = std::conditional_t<detail::sufficiently_trivial<T>, T[N], char[N * sizeof(T)]>;
+    using storage_type = std::conditional_t<detail::sufficiently_trivial<T>,
+                                            T[N], char[N * sizeof(T)]>;
     T *_data;
     size_type _sz;
     size_type _cap;
@@ -142,8 +150,7 @@ class small_size_optimized_vector {
     constexpr auto storage_begin() noexcept -> T * {
         if constexpr (detail::sufficiently_trivial<T>) {
             return _storage;
-        }
-        else {
+        } else {
             return reinterpret_cast<T *>(_storage);
         }
     }

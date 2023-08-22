@@ -8,34 +8,37 @@ namespace mystd {
 namespace detail {
 
 template <class T>
-concept sufficiently_trivial = std::is_trivially_destructible_v<T> && std::is_trivially_constructible_v<T>;
+concept sufficiently_trivial =
+    std::is_trivially_destructible_v<T> && std::is_trivially_constructible_v<T>;
 }
 
-template <class T, std::size_t N>
-class fixed_capacity_vector {
+template <class T, std::size_t N> class fixed_capacity_vector {
   public:
     using value_type = T;
     using size_type = std::size_t;
     using reference = value_type &;
     using const_reference = const value_type &;
-    using iterator = T*;
-    using const_iterator = const T*;
+    using iterator = T *;
+    using const_iterator = const T *;
 
     // constructors
     constexpr fixed_capacity_vector() noexcept : _sz{0} {}
-    constexpr fixed_capacity_vector(const fixed_capacity_vector& other) : _sz{other._sz} {
+    constexpr fixed_capacity_vector(const fixed_capacity_vector &other)
+        : _sz{other._sz} {
         for (size_type i = 0; i < _sz; i++)
             std::construct_at(begin() + i, other[i]);
     }
 
-    constexpr fixed_capacity_vector(fixed_capacity_vector&& other) noexcept : _sz{other._sz} {
+    constexpr fixed_capacity_vector(fixed_capacity_vector &&other) noexcept
+        : _sz{other._sz} {
         for (size_type i = 0; i < _sz; i++)
             std::construct_at(begin() + i, std::move(other[i]));
         other._sz = 0;
     }
 
     // assignments
-    constexpr auto operator=(const fixed_capacity_vector& other) -> fixed_capacity_vector& {
+    constexpr auto operator=(const fixed_capacity_vector &other)
+        -> fixed_capacity_vector & {
         if constexpr (!std::is_trivially_destructible_v<T>) {
             destroy_all();
         }
@@ -45,7 +48,8 @@ class fixed_capacity_vector {
         return *this;
     }
 
-    constexpr auto operator=(fixed_capacity_vector&& other) -> fixed_capacity_vector& {
+    constexpr auto operator=(fixed_capacity_vector &&other)
+        -> fixed_capacity_vector & {
         if constexpr (!std::is_trivially_destructible_v<T>) {
             destroy_all();
         }
@@ -64,11 +68,12 @@ class fixed_capacity_vector {
     }
 
     // element access
+    constexpr auto data() const noexcept -> T * { return begin(); }
+
     constexpr auto begin() noexcept -> iterator {
         if constexpr (detail::sufficiently_trivial<T>) {
             return _storage;
-        }
-        else {
+        } else {
             return reinterpret_cast<T *>(_storage);
         }
     }
@@ -76,15 +81,12 @@ class fixed_capacity_vector {
     constexpr auto begin() const noexcept -> const_iterator {
         if constexpr (detail::sufficiently_trivial<T>) {
             return _storage;
-        }
-        else {
+        } else {
             return reinterpret_cast<const T *>(_storage);
         }
     }
 
-    constexpr auto end() noexcept -> iterator {
-        return begin() + _sz;
-    }
+    constexpr auto end() noexcept -> iterator { return begin() + _sz; }
 
     constexpr auto end() const noexcept -> const_iterator {
         return begin() + _sz;
@@ -124,15 +126,15 @@ class fixed_capacity_vector {
     }
 
   private:
-    using storage_type = std::conditional_t<detail::sufficiently_trivial<T>, T[N], char[N * sizeof(T)]>;
+    using storage_type = std::conditional_t<detail::sufficiently_trivial<T>,
+                                            T[N], char[N * sizeof(T)]>;
     alignas(T) storage_type _storage;
     size_type _sz;
 
     auto destroy_all() const noexcept -> void {
-        for (auto first = begin(), last = end(); first != last;
-                first++) {
+        for (auto first = begin(), last = end(); first != last; first++) {
             std::destroy_at(first);
         }
     }
 };
-}
+} // namespace mystd
