@@ -9,3 +9,4 @@
     - affordances supported:
         - `clone()`: to support `any` construction and copy assignment
         - `type()`: to support `any::type()`
+- it requires the value type to be `std::copy_constructible`, since `any` does not have template parameters and cannot decide whether to define copy ctors according to the holding type
