@@ -29,6 +29,8 @@
                     };
                     ```
                 - it seems that there is no known techniques to check it, so `mystd::vector` does not do this optimization, but for practice purpose [`mystd::small_size_optimized_vector`](#small_size_optimized_vectort-n) implements it
+- __TO DO__:
+    - exception safety: if there is exception when propagating elements in `grow`, need to restore the original state (destory and deallocate objects in new storage) and rethrow exception
 
 
 ## `fixed_capacity_vector`
