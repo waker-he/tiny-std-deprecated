@@ -113,3 +113,4 @@
 - implemented using `weak_ptr` data member, which is a _ticket_ to `shared_ptr`
 - inheriting (`public`ly) will enable an object to take part in its own life time management
 - constructing a `shared_ptr` for an object that is already managed by another `shared_ptr` is undefined behavior
+- TO_DO: use C++23 deducing this to eliminate base class template parameter, change weak_ptr data member to a storage of `sizeof(weak_ptr)` and `alignof(weak_ptr)`, manually constructing and destructing the weak_ptr
