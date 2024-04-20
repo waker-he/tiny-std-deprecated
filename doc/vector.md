@@ -12,6 +12,9 @@
 - not allocator-aware
 - for implementation to enable usage in `constexpr`:
     - cannot use `malloc` when allocating, instead, use `std::allocator<T>::allocate(std::size_t n)`
+        - reason:
+           - `std::allocator<T>::allocate(std::size_t n)` returns `T *`, which is a typed pointer
+           - `malloc` or `::operator new` returns `void *`
     - cannot use placement new, use `std::construct_at`
     - cannot use `std::memcpy`, `std::uninitailzed_move`, `std::uninitailzed_copy`, use `construct_at` and `move_if_noexcept`
 - potential optimization to do
